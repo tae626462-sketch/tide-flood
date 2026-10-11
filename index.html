@@ -31,6 +31,11 @@ table{width:100%;border-collapse:collapse;font-size:.95rem}td,th{padding:6px;bor
 <div class="mut" id="clock"></div>
 
 <div class="card">
+ <div style="display:flex;gap:8px;margin-bottom:10px">
+  <input id="q" placeholder="🔎 ค้นหา หมู่บ้าน / ตำบล / ถนน / อำเภอ / จังหวัด" style="flex:1">
+  <button id="qBtn">ค้นหา</button>
+ </div>
+ <div id="qRes" style="margin-bottom:10px"></div>
  <button id="gpsBtn">📍 ใช้ตำแหน่งของฉัน (GPS)</button>
  <div class="mut" id="loc" style="margin-top:8px">ยังไม่ได้ระบุตำแหน่ง</div>
  <div class="row" style="margin-top:10px">
@@ -86,6 +91,19 @@ $('gpsBtn').onclick=()=>{
  navigator.geolocation.getCurrentPosition(p=>{lat=p.coords.latitude;lon=p.coords.longitude;init(true)},
   e=>$('loc').textContent='หาตำแหน่งไม่ได้: '+e.message,{enableHighAccuracy:true,timeout:15000});
 };
+// ===== ค้นหาสถานที่ (OpenStreetMap) =====
+let found=[];
+async function search(){
+ const q=$('q').value.trim();if(!q)return;
+ $('qRes').innerHTML='<span class="mut">กำลังค้นหา...</span>';
+ try{
+  found=await (await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=th&accept-language=th&addressdetails=1&limit=8&q=${encodeURIComponent(q)}`)).json();
+  if(!found.length){$('qRes').innerHTML='<span class="mut">ไม่พบสถานที่ ลองพิมพ์ชื่อ + อำเภอ/จังหวัด เช่น "บ้านแหลม เพชรบุรี"</span>';return}
+  $('qRes').innerHTML=found.map((f,i)=>`<div onclick="pick(${i})" style="padding:8px;border-bottom:1px solid #24405a;cursor:pointer">📌 ${f.display_name.replace(/, ประเทศไทย$/,'')}</div>`).join('');
+ }catch(e){$('qRes').innerHTML='<span class="mut">ค้นหาไม่ได้ ตรวจสอบอินเทอร์เน็ต</span>'}
+}
+window.pick=i=>{const f=found[i];lat=+f.lat;lon=+f.lon;$('qRes').innerHTML=`<span class="mut">✅ เลือก: ${f.display_name.split(',').slice(0,3).join(',')}</span>`;$('bank').value='';init(true)};
+$('qBtn').onclick=search;$('q').addEventListener('keydown',e=>e.key=='Enter'&&search());
 ['ground','bank','surge','auto'].forEach(id=>$(id).addEventListener('input',analyze));
 let sg={},wx={},seaBrg=null;
 const DIRS=['เหนือ','ตะวันออกเฉียงเหนือ','ตะวันออก','ตะวันออกเฉียงใต้','ใต้','ตะวันตกเฉียงใต้','ตะวันตก','ตะวันตกเฉียงเหนือ'];
